@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block body %}
+<h1>Login with token</h1>
+
+<p>
+    <form method="post">
+        <h3>Please enter your LoginToken</h3>
+
+        <textarea name="loginToken" style="width: 500px; height: 30px; white-space: nowrap; font-family: monospace">{{ session.loginToken }}</textarea>
+        <br><br>
+        <input type="submit" value="Login">
+    </form>
+</p>
+{% endblock %}

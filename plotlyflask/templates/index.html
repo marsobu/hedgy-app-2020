@@ -1,0 +1,155 @@
+<title>Hedgy demo</title>
+
+{% extends "base.html" %}
+
+{% block body %}
+<img src="../static/img/logo.png" alt="Hedgy.app" height="70"">
+
+{% if not session.accessToken %}
+
+<ul>
+	<p>This demo works on imaginary data from test banks. For any bank you choose, enter the following credentials:</p>
+	<li>Username: test</li>
+	<li>Password: 0000</li>
+	<p><a href="/auth/init">Log in with eBank</a></p>
+</ul> 
+
+{% else %}
+<p>You are successfully authenticated!</p>
+
+<ul>
+	<li><a href="/dashapp/" class="dash-link"><span>Go to Analytics</span><i class="fas fa-arrow-right"></i></a></li>
+	<li><a href="/info">Technical information</a></li>
+    <li><a href="/auth/logout">Log out</a></li>
+</ul>
+
+<div id="account-list">
+    <!-- spinner -->
+    <div class="lds-ellipsis spinner"><div></div><div></div><div></div><div></div></div>
+    <div class="container"></div>
+
+</div>
+
+<div id="transactions-list">
+    <div class="title"></div>
+    <!-- spinner -->
+    <div class="lds-ellipsis spinner" style="display: none"><div></div><div></div><div></div><div></div></div>
+    <div class="container"></div>
+    <button id="paging_link" style="display: none">Fetch more transactions</button>
+</div>
+<script>
+
+    function format_transaction_details(details) {
+        removeEmptyProperties(details)
+        var formattedJson = JSON.stringify(details, null, 2);        
+        return formattedJson
+    }
+
+    const removeEmptyProperties = (obj) => {
+        Object.keys(obj).forEach(key => {
+            if (obj[key] && typeof obj[key] === 'object')
+                removeEmptyProperties(obj[key]);
+
+            else if (obj[key] == null)
+                delete obj[key];
+        });
+    };
+
+    var show_transaction_details = function(detailsDiv){        
+        details = detailsDiv.data("details")
+        formattedDetails = format_transaction_details(details)
+        detailsDiv.empty();
+        if (details) {
+            detailsDiv.append("<div class='message'>" + formattedDetails + "</div>");
+        } else {
+            detailsDiv.append("<div class='no-details'>No details for transaction</div>");
+        }
+    }
+
+    var show_transactions = function(account_id, account_name){
+        $("#transactions-list > .title").html("<h3>Transactions: " + account_name + "</h3>");
+        $("#transactions-list > .container").empty();
+
+        show_transactions_page(account_id);
+    }
+
+    var show_transactions_page = function(account_id, pagingtoken=null){
+        $("#transactions-list > .spinner").show();
+
+        var url = "/query/accounts/" + account_id + "/transactions";
+        if (pagingtoken) {
+            url = url.concat("?pagingToken=" + pagingtoken)
+        }
+        
+        $.getJSON(url, function(result){
+            $("#transactions-list > .spinner").hide();
+
+            if (result.error) {
+                $("#transactions-list > .container").append("<div class='error'>Error: " + result.error + "</div>")
+                $("#transactions-list > .container").append("<div class='error'>Details: " + result.details.reason + "</div>")
+                return;
+            }
+
+            for(var i = 0; i < result.transactions.length; i++){
+                var transaction = result.transactions[i];
+
+                var transactionDiv = $("<div class='transaction'>")
+                transactionDiv.data("id", transaction.id)
+
+                dateDiv = $("<div class='date'>").html(transaction.date.substring(0, 10))
+                textDiv = $("<div class='text'>").html(transaction.text)
+                amountDiv = $("<div class='amount'>").html(transaction.amount.currency + " " + transaction.amount.value.toLocaleString(undefined, { minimumFractionDigits: 2 }))
+
+                detailsDiv = $("<div class='details' id='details-" + transaction.id + "'>")
+                detailsDiv.data("details", transaction.details)
+
+                transactionDiv.append(dateDiv)
+                transactionDiv.append(textDiv)
+                transactionDiv.append(amountDiv)
+                transactionDiv.append(detailsDiv)
+                $("#transactions-list > .container").append(transactionDiv)
+            }
+
+            $(".transaction").click(function(){
+                var transaction = $(this);
+                var transactionDetails = transaction.find(".details")
+                show_transaction_details(transactionDetails);
+            })
+
+            if (result.pagingToken) {
+                $("#paging_link").show();
+                $("#paging_link").data("pagingtoken", result.pagingToken);
+            } else {
+                $("#paging_link").hide();
+            }
+
+            $("#paging_link").unbind();
+            $("#paging_link").click(function(){
+                var obj = $(this);
+                show_transactions_page(account_id, obj.data("pagingtoken"));
+            })
+        });
+    }
+
+
+    $(function(){
+
+        $.getJSON("/query/accounts", function(result){
+            $("#account-list > .container").empty();
+            $("#account-list > .spinner").hide();
+
+            for(var i = 0; i < result.accounts.length; i++){
+                var account = result.accounts[i];
+                $("#account-list > .container").append("<div class='account' data-name='" + account.name + "' data-id='" + account.id + "'><div class='name'>" + account.name + "</div><div class='balance'>" + account.bookedBalance.currency + " " + account.bookedBalance.value.toLocaleString(undefined, { minimumFractionDigits: 2 }) + "</div></div");
+            }
+
+            $(".account").click(function(){
+                var obj = $(this);
+                show_transactions(obj.data("id"), obj.data("name"));
+            })
+        });
+
+    });
+</script>
+{% endif %}
+{% endblock %}

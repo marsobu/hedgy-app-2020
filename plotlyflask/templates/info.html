@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block body %}
+<h1>Technical information</h1>
+
+<p>
+    <h3>LoginToken</h3>
+    <textarea style="width: 500px; height: 30px; white-space: nowrap; font-family: monospace">{{ session.loginToken }}</textarea>
+
+    <h3>AccessToken</h3>
+    <textarea style="width: 500px; height: 30px; white-space: nowrap; font-family: monospace">{{ session.accessToken }}</textarea>
+</p>
+{% endblock %}
